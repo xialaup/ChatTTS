@@ -1,17 +1,35 @@
+import os
 from setuptools import setup, find_packages
-setup(name='chattts',
-      version='0.0.1',
-      author='2noise',
-      url='https://github.com/2noise/ChatTTS',
-      install_requires=['omegaconf>=2.3.0',
-                        'numpy<2.0.0',
-                        'numba',
-                        'pybase16384',
-                'torch>=2.1.0',
-                'tqdm',
-                'vector_quantize_pytorch',
-                'transformers>=4.41.1',
-                'vocos',
-                ],  # 定义依赖哪些模块
-      packages=find_packages(),  # 系统自动从当前目录开始找包
-      )
+
+setup(
+    name="chattts",
+    version=os.environ.get("CHTTS_VER", "v0.0.0").lstrip("v"),
+    description="A generative speech model for daily dialogue",
+    long_description=open("README.md", encoding="utf8").read(),
+    long_description_content_type="text/markdown",
+    author="2noise",
+    author_email="open-source@2noise.com",
+    maintainer="fumiama",
+    url="https://github.com/2noise/ChatTTS",
+    packages=find_packages(include=["ChatTTS", "ChatTTS.*"]),
+    package_data={
+        "ChatTTS.res": ["homophones_map.json", "sha256_map.json"],
+    },
+    license="CC BY-NC 4.0",
+    install_requires=[
+        "numba",
+        "numpy<2.0.0",
+        "omegaconf>=2.3.0",
+        "pybase16384",
+        "torch>=2.1.0",
+        "tqdm",
+        "transformers>=4.41.1",
+        "vector_quantize_pytorch",
+        "vocos",
+    ],
+    platforms="any",
+    classifiers=[
+        "Programming Language :: Python :: 3",
+        "Operating System :: OS Independent",
+    ],
+)

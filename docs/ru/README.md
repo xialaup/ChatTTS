@@ -4,7 +4,7 @@
 
 [![Huggingface](https://img.shields.io/badge/🤗%20-Models-yellow.svg?style=for-the-badge)](https://huggingface.co/2Noise/ChatTTS)
 
-[**English**](../../README.md) | [**简体中文**](../cn/README.md) | [**日本語**](../jp/README.md) | **Русский**
+[**English**](../../README.md) | [**简体中文**](../cn/README.md) | [**日本語**](../jp/README.md) | **Русский** | [**Español**](../es/README.md)
 
 ChatTTS - это модель преобразования текста в речь, специально разработанная для диалоговых сценариев, таких как помощник LLM. Она поддерживает как английский, так и китайский языки. Наша модель обучена на более чем 100 000 часах английского и китайского языков. Открытая версия на **[HuggingFace](https://huggingface.co/2Noise/ChatTTS)** - это предварительно обученная модель с 40 000 часами без SFT.
 
@@ -34,9 +34,10 @@ ChatTTS - мощная система преобразования текста 
 ```python
 import ChatTTS
 from IPython.display import Audio
+import torch
 
 chat = ChatTTS.Chat()
-chat.load_models(compile=False) # Установите значение True для лучшей производительности
+chat.load(compile=False) # Установите значение True для лучшей производительности
 
 texts = ["ВВЕДИТЕ ВАШ ТЕКСТ ЗДЕСЬ",]
 
@@ -52,6 +53,7 @@ torchaudio.save("output1.wav", torch.from_numpy(wavs[0]), 24000)
 # Выборка говорящего из Гауссиана.
 
 rand_spk = chat.sample_random_speaker()
+print(rand_spk) # save it for later timbre recovery
 
 params_infer_code = {
   'spk_emb': rand_spk, # добавить выбранного говорящего

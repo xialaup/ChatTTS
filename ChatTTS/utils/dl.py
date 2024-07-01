@@ -3,15 +3,17 @@ from pathlib import Path
 import hashlib
 import requests
 from io import BytesIO
+from typing import Dict
+from mmap import mmap, ACCESS_READ
 
 from .log import logger
 
-def sha256(f) -> str:
-    sha256_hash = hashlib.sha256()
-    # Read and update hash in chunks of 4M
-    for byte_block in iter(lambda: f.read(4 * 1024 * 1024), b""):
-        sha256_hash.update(byte_block)
-    return sha256_hash.hexdigest()
+
+def sha256(fileno: int) -> str:
+    data = mmap(fileno, 0, access=ACCESS_READ)
+    h = hashlib.sha256(data).hexdigest()
+    del data
+    return h
 
 
 def check_model(
@@ -19,18 +21,17 @@ def check_model(
 ) -> bool:
     target = dir_name / model_name
     relname = target.as_posix()
-    logger.debug(f"checking {relname}...")
+    logger.get_logger().debug(f"checking {relname}...")
     if not os.path.exists(target):
-        logger.info(f"{target} not exist.")
+        logger.get_logger().info(f"{target} not exist.")
         return False
     with open(target, "rb") as f:
-        digest = sha256(f)
+        digest = sha256(f.fileno())
         bakfile = f"{target}.bak"
         if digest != hash:
-            logger.warn(f"{target} sha256 hash mismatch.")
-            logger.info(f"expected: {hash}")
-            logger.info(f"real val: {digest}")
-            logger.warn("please add parameter --update to download the latest assets.")
+            logger.get_logger().warn(f"{target} sha256 hash mismatch.")
+            logger.get_logger().info(f"expected: {hash}")
+            logger.get_logger().info(f"real val: {digest}")
             if remove_incorrect:
                 if not os.path.exists(bakfile):
                     os.rename(str(target), bakfile)
@@ -42,11 +43,9 @@ def check_model(
     return True
 
 
-def check_all_assets(update=False) -> bool:
-    BASE_DIR = Path(os.getcwd())
-
-    logger.info("checking assets...")
-    current_dir = BASE_DIR / "asset"
+def check_all_assets(base_dir: Path, sha256_map: Dict[str, str], update=False) -> bool:
+    logger.get_logger().info("checking assets...")
+    current_dir = base_dir / "asset"
     names = [
         "Decoder.pt",
         "DVAE.pt",
@@ -58,12 +57,12 @@ def check_all_assets(update=False) -> bool:
     for model in names:
         menv = model.replace(".", "_")
         if not check_model(
-            current_dir, model, os.environ[f"sha256_asset_{menv}"], update
+            current_dir, model, sha256_map[f"sha256_asset_{menv}"], update
         ):
             return False
 
-    logger.info("checking configs...")
-    current_dir = BASE_DIR / "config"
+    logger.get_logger().info("checking configs...")
+    current_dir = base_dir / "config"
     names = [
         "decoder.yaml",
         "dvae.yaml",
@@ -74,48 +73,48 @@ def check_all_assets(update=False) -> bool:
     for model in names:
         menv = model.replace(".", "_")
         if not check_model(
-            current_dir, model, os.environ[f"sha256_config_{menv}"], update
+            current_dir, model, sha256_map[f"sha256_config_{menv}"], update
         ):
             return False
 
-    logger.info("all assets are already latest.")
+    logger.get_logger().info("all assets are already latest.")
     return True
 
 
 def download_and_extract_tar_gz(url: str, folder: str):
     import tarfile
 
-    logger.info(f"downloading {url}")
+    logger.get_logger().info(f"downloading {url}")
     response = requests.get(url, stream=True, timeout=(5, 10))
     with BytesIO() as out_file:
         out_file.write(response.content)
         out_file.seek(0)
-        logger.info(f"downloaded.")
+        logger.get_logger().info(f"downloaded.")
         with tarfile.open(fileobj=out_file, mode="r:gz") as tar:
             tar.extractall(folder)
-        logger.info(f"extracted into {folder}")
+        logger.get_logger().info(f"extracted into {folder}")
 
 
 def download_and_extract_zip(url: str, folder: str):
     import zipfile
 
-    logger.info(f"downloading {url}")
+    logger.get_logger().info(f"downloading {url}")
     response = requests.get(url, stream=True, timeout=(5, 10))
     with BytesIO() as out_file:
         out_file.write(response.content)
         out_file.seek(0)
-        logger.info(f"downloaded.")
+        logger.get_logger().info(f"downloaded.")
         with zipfile.ZipFile(out_file) as zip_ref:
             zip_ref.extractall(folder)
-        logger.info(f"extracted into {folder}")
+        logger.get_logger().info(f"extracted into {folder}")
 
 
 def download_dns_yaml(url: str, folder: str):
-    logger.info(f"downloading {url}")
+    logger.get_logger().info(f"downloading {url}")
     response = requests.get(url, stream=True, timeout=(5, 10))
     with open(os.path.join(folder, "dns.yaml"), "wb") as out_file:
         out_file.write(response.content)
-        logger.info(f"downloaded into {folder}")
+        logger.get_logger().info(f"downloaded into {folder}")
 
 
 def download_all_assets(tmpdir: str, version="0.2.5"):
@@ -140,7 +139,7 @@ def download_all_assets(tmpdir: str, version="0.2.5"):
 
     architecture = archs.get(architecture, None)
     if not architecture:
-        logger.error(f"architecture {architecture} is not supported")
+        logger.get_logger().error(f"architecture {architecture} is not supported")
         exit(1)
     try:
         BASE_URL = "https://github.com/fumiama/RVC-Models-Downloader/releases/download/"
